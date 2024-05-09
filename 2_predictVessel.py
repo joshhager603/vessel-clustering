@@ -5,6 +5,8 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, AgglomerativeClustering
 import functools
 from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.metrics import silhouette_score, silhouette_samples
+import matplotlib.pyplot as plt
 
 def hh_mm_ss2seconds(hh_mm_ss):
     return functools.reduce(lambda acc, x: acc*60 + x, map(int, hh_mm_ss.split(':')))
@@ -256,10 +258,75 @@ def evaluate_noprint(csv_path, predictor):
     return rand_index_score
 
 def predictor(csv_path):
-
     # will need to change n_clusters argument to whatever is determined by calvin's method
     return agg_predictor(csv_path, num_unique_VIDs(csv_path))
 
+#Graphs standard deviations of silhouette samples at each cluster
+def find_optimal_k_silhouette_std(csv_path):
+    X = baseline_preprocess(csv_path)
+    silhouette_std = []
+    k_values = range(2, 30)
+    
+    for k in k_values:
+        clf = AgglomerativeClustering(n_clusters=k, linkage='ward')
+        predict = clf.fit_predict(X)
+        silhouette_vals = silhouette_samples(X, predict)
+        silhouette_std.append(np.std(silhouette_vals))
+    
+    plt.plot(k_values, silhouette_std, marker='o')
+    plt.title('Standard Deviations of Silhouette Scores for Different Values of K')
+    plt.xlabel('Number of Clusters (K)')
+    plt.ylabel('Standard Deviation of Silhouette Scores')
+    plt.xticks(k_values)
+    plt.grid(True)
+    plt.show()
+    
+
+#Graphs average silhouette scores at each cluster
+def find_optimal_k_silhouette_score(csv_path):
+    X = baseline_preprocess(csv_path)
+    silhouette = []
+    k_values = range(2, 30)
+    
+    for k in k_values:
+        clf = AgglomerativeClustering(n_clusters=k, linkage='ward')
+        predict = clf.fit_predict(X)
+        silhouette_vals = silhouette_score(X, predict)
+        silhouette.append(silhouette_vals)
+    
+    plt.plot(k_values, silhouette, marker='o')
+    plt.title('Average Silhouette Scores for Different Values of K')
+    plt.xlabel('Number of Clusters (K)')
+    plt.ylabel('Average Silhouette Scores')
+    plt.xticks(k_values)
+    plt.grid(True)
+    plt.show()
+    
+
+
+def find_optimal_k_elbow(csv_path):
+    X = baseline_preprocess(csv_path)
+    sse = []
+    k_values = range(2, 30, 2)
+    
+    for k in k_values:
+        clf = AgglomerativeClustering(n_clusters=k, linkage='ward')
+        labels = clf.fit_predict(X)
+        centroids = np.array([X[labels == i].mean(axis=0) for i in range(k)])
+        sse.append(((X - centroids[labels])**2).sum())
+    plt.plot(k_values, sse, marker='o')
+    plt.title('Elbow Method for Optimal K')
+    plt.xlabel('Number of Clusters (K)')
+    plt.ylabel('Sum of Squared Errors (SSE)')
+    plt.xticks(k_values)
+    plt.grid(True)
+    plt.show()
+
+
+
+
+find_optimal_k_silhouette_score("./Data/set3noVID.csv")
+find_optimal_k_silhouette_std("./Data/set3noVID.csv")
 # get_baseline_score()
 # evaluate_general('./Data/set1.csv', k_means_predictor)
 # evaluate_general('./Data/set2.csv', k_means_predictor)
